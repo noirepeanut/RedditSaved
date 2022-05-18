@@ -1074,7 +1074,7 @@ def main():
 
     window.close()
     
-    p.exited_post()
+    
 
 
     # unload all of the image data from the post so the file isnt so large
@@ -1082,11 +1082,16 @@ def main():
         if post.loaded:
             post.unload_image()
 
+    # not working as attribute wasnt set for my file
+    p.exited_post()
+
     pickler.save(data, posts_data_file)
 
     if settings['save_tempsets']:
-        # this file is getting very large, are the media datas still loaded?
-        
+        for temp_set in temp_sets:
+            for post in temp_set:
+                if post.loaded:
+                    post.unload_image()
         pickler.save(temp_sets, settings['tempsets_file'])
 
 if __name__ == '__main__':

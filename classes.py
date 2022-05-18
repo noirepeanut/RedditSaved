@@ -274,7 +274,8 @@ class Post:
         return "{}/{}{}".format(self.folder, self.filename, self.ext)
 
     def exited_post(self):
-        self.times_last_post = 0
+        pass
+        self.times_last_post += 1
 
 
 # add a variable which means a tag is required no matter what
