@@ -85,7 +85,6 @@ def download_redgif_content(url, filename):
             with urlopen(req) as downloaded:
                 with open(filename, 'wb') as f:
                     f.write(downloaded.read())
-                    print("wrote redgit file")
 
 def download_media(url, filename):
     print("Downloading: {}".format(url))
@@ -107,11 +106,16 @@ def get_media(post, url, saved_files, media_dir):
             download_redgif_content(url, post.get_filename())
     
     # simply download the picture,  this link is to a .jpg
-    elif "i.redd.it" in url:
-        if ".gif" in url:
+    elif "i.redd.it" in url or ("imgur.com" in url and not "imgur.com/a/" in url) or "cdni.pornpics.com" in url:
+        if ".gifv" in url:
+            url = url[0:-4]+"mp4"
+            post.set_filename(media_dir, get_valid_filename(post.title), ".mp4")
+        elif ".gif" in url:
             post.set_filename(media_dir, get_valid_filename(post.title), ".gif")
         elif ".jpg" in url:
             post.set_filename(media_dir, get_valid_filename(post.title), ".jpg")
+        elif ".jpeg" in url:
+            post.set_filename(media_dir, get_valid_filename(post.title), ".jpeg")
         
         if not post.get_short_filename() in saved_files:
             download_media(url, post.get_filename())
@@ -138,9 +142,12 @@ def get_media(post, url, saved_files, media_dir):
     if post == None:
         print("Could not find a way to download {}".format(url))
 
-    if not os.path.isfile(post.get_filename()):
+    if post != None and not os.path.isfile(post.get_filename()):
         print("Media for post {} doesnt exist now".format(url))
         post = None
+
+    # need to make it so we check by post title and time posted to compare if exists
+    # so multiple posts with same name can be saved
 
     return post
 
@@ -182,6 +189,16 @@ def main():
     # get all of the files downloaded into the media folder
     flist0 = os.listdir(media_dir)
     saved_files = [f for f in flist0 if os.path.isfile(os.path.join(media_dir, f))]
+
+
+    # check if any posts dont have a saved file should also check for postless media
+    idx = 0
+    while idx < len(old_posts):
+        post = old_posts[idx]
+        if not post.get_short_filename() in saved_files:
+            old_posts.pop(idx)
+            idx -= 1
+        idx += 1
 
     # get saved posts (and upvoted?) ones for the database
     scraped_posts = scrape_posts(reddit, saved_files, scrape_amount, media_dir)

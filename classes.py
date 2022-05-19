@@ -170,7 +170,6 @@ class Post:
     # ------------------------------------------------------------------------------
 
     def get_gif(self):
-
         if not self.loaded:
             img = Image.open(self.get_filename())
             img.thumbnail((1250, 800))
