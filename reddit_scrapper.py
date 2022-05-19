@@ -55,7 +55,7 @@ def get_posts_from(model, saved_files, scrape_amount, media_dir):
     print("scraped a total of {} posts".format(i))
     return posts
 
-def get_redgif_content(url, filename):
+def download_redgif_content(url, filename):
     """Steps in-order.
     * request html
     * get content
@@ -85,6 +85,7 @@ def get_redgif_content(url, filename):
             with urlopen(req) as downloaded:
                 with open(filename, 'wb') as f:
                     f.write(downloaded.read())
+                    print("wrote redgit file")
 
 def download_media(url, filename):
     print("Downloading: {}".format(url))
@@ -103,7 +104,7 @@ def get_media(post, url, saved_files, media_dir):
         post.set_filename(media_dir, get_valid_filename(post.title), ".mp4")
         
         if not post.get_short_filename() in saved_files:
-            get_redgif_content(url, post.get_filename())
+            download_redgif_content(url, post.get_filename())
     
     # simply download the picture,  this link is to a .jpg
     elif "i.redd.it" in url:
@@ -122,6 +123,7 @@ def get_media(post, url, saved_files, media_dir):
         # but since there is multiple pictures we need to make multiple posts then,
         # same title but with a number to indicate which image of the post we have
         post = None
+        print("Is gallery")
         
 
     # can change the extension of .gifv to .mp4 and they work????
@@ -135,6 +137,11 @@ def get_media(post, url, saved_files, media_dir):
 
     if post == None:
         print("Could not find a way to download {}".format(url))
+
+    if not os.path.isfile(post.get_filename()):
+        print("Media for post {} doesnt exist now".format(url))
+        post = None
+
     return post
 
 # START PROGRAM

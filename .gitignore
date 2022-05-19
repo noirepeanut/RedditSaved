@@ -1,0 +1,6 @@
+# ignore these files
+text.sublime-workspace
+reddit_media/
+data/
+tools/
+__pycache__/
