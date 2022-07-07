@@ -50,18 +50,6 @@ class Post(Base):
 
     def __repr__(self):
         return '<Post {}>'.format(self.title)
-
-class Tag(Base):
-    __tablename__ = 'tag' 
-    id = Column(Integer, primary_key=True, unique=True)
-    
-    value = Column(String(70), index=True)
-
-    def __init__(self, value):
-        self.value = value
-
-    def __repr__(self):
-        return '<Tag {}>'.format(self.value)
         
 class PostTag(Base):
     __tablename__ = 'post_tag' 
@@ -75,3 +63,42 @@ class PostTag(Base):
 
     def __repr__(self):
         return '<PostTag {} - {}>'.format(self.post.title, self.tag.value)
+
+class Tag(Base):
+    __tablename__ = 'tag' 
+    id = Column(Integer, primary_key=True, unique=True)
+    
+    value = Column(String(70), index=True)
+
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return '<Tag {}>'.format(self.value)
+        
+class Group(Base):
+    __tablename__ = 'group' 
+    id = Column(Integer, primary_key=True, unique=True)
+    
+    name = Column(String(70), index=True)
+    
+    tags = '' 
+
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return '<Group {}>'.format(self.name)
+        
+class GroupTag(Base):
+    __tablename__ = 'group_tag' 
+    id = Column(Integer, primary_key=True, unique=True)
+    
+    group_id = Column(Integer, ForeignKey('group.id'), primary_key=True)
+    tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
+
+    group = relationship('Group', backref=backref('GroupTag', cascade='all, delete-orphan'))
+    tag = relationship('Tag', backref=backref('GroupTag', cascade='all, delete-orphan'))
+
+    def __repr__(self):
+        return '<GroupTag {} - {}>'.format(self.group.name, self.tag.value)
