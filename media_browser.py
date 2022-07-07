@@ -18,7 +18,9 @@ from sys import platform as PLATFORM
 import pickler
 import classes
 
-inst = vlc.Instance()
+from models import Post, Tag, PostTag
+
+inst = vlc.Instance('--no-xlib')
 inst.log_unset()
 
 # if this filename changes we need to update for each file
@@ -994,6 +996,8 @@ def main():
 
             # p.add_time_viewed(time)
             
+            # print(p.get_short_filename())
+            
             if p.is_image() or p.is_gif():
                 players[frame_selector.get_idx()].stop()
             if p.is_video():
@@ -1026,11 +1030,11 @@ def main():
             
             if p.is_image():
                 window[frame_selector.get_key('MEDIA')].update(data=media_data)
-                window[frame_selector.get_key('PROGRESS')].update(visible=False)
+                window[frame_selector.get_key('PROGRESS')].update(current_count=0, visible=False)
 
             if p.is_gif():
                 window[frame_selector.get_key('MEDIA')].update(data=media_data)
-                window[frame_selector.get_key('PROGRESS')].update(visible=True)
+                window[frame_selector.get_key('PROGRESS')].update(current_count=0, visible=True)
 
          
 
