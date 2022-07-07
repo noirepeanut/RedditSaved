@@ -38,24 +38,6 @@ def main():
 		events, values = window.read(timeout=None)
  
 
-		# if events == '_MEDIA_BROWSER_':
-		# 	launch_program = 'media_browser'
-		# 	break
-		# elif events == '_SCRAPE_REDDIT_':
-		# 	launch_program = 'scrape_reddit'
-		# 	break
-		# elif events == '_TAG_GROUP_EDITOR_':
-		# 	launch_program = 'tag_group_editor'
-		# 	break
-		# elif events == '_CHANGE_CONTROLS_':
-		# 	launch_program = 'change_controls'
-		# 	break
-		# elif events == '_EDIT_SETTINGS_':
-		# 	launch_program = 'edit_settings'
-		# 	break
-		# elif events in ('_QUIT_', sg.WIN_CLOSED):
-		# 	break
-
 
 		if events == '_MEDIA_BROWSER_':
 			launch_program = 'media_browser'
