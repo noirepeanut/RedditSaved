@@ -16,6 +16,9 @@ import time
 import classes
 import pickler
 
+from database import Session
+from models import Post
+
 
 
 def get_valid_filename(string):
@@ -31,29 +34,38 @@ def add_subbreddit_as_tag(posts, tags):
     return posts, tags
 
 def scrape_posts(reddit, saved_files, scrape_amount, media_dir):
-    posts = get_posts_from(reddit.user.me().saved(limit=scrape_amount), saved_files, scrape_amount, media_dir)
+    num_posts = get_posts_from(reddit.user.me().saved(limit=scrape_amount), saved_files, scrape_amount, media_dir)
 
     # it is not adding the two lists together like each line an element, kinda doing it 3d
     # posts.append(get_posts_from(reddit.user.me().upvoted(limit=scrape_amount)))
     # print(len(posts), s_posts)
-    return posts
+    return num_posts
 
 def get_posts_from(model, saved_files, scrape_amount, media_dir):
-    posts = []
+
+    session = Session()
+    
     i = 0
+    num_new_posts = 0
     for p in model:
         if isinstance(p, praw.models.Submission) and p.over_18: # if the post is a Submission and 18+
-            # could have a date scrapped
-            post = classes.Post()
-            post.build_from_post(p)
-            post = get_media(post, p.url, saved_files, media_dir)
-            if post != None and len(post.get_filename()) > 4:
-                posts.append(post)
+            # SQL
+            # need to get filename and extension before this
+
+
+            saved_file, filename, ext = get_media(p.url, p.title, saved_files, media_dir)
+            if saved_file:
+                # check if the filename is legit, long enough since that is a possible error
+                post = Post(p.title, str(p.author), str(p.subreddit), p.url, p.permalink, filename, media_dir, ext)
+                session.add(post)
+                session.commit()
+                num_new_posts += 1
+                
         i += 1
         if i % 50 == 0:
             print("scraped {}/{}".format(i, scrape_amount))
     print("scraped a total of {} posts".format(i))
-    return posts
+    return num_new_posts
 
 def download_redgif_content(url, filename):
     """Steps in-order.
@@ -85,6 +97,7 @@ def download_redgif_content(url, filename):
             with urlopen(req) as downloaded:
                 with open(filename, 'wb') as f:
                     f.write(downloaded.read())
+    return True
 
 def download_media(url, filename):
     print("Downloading: {}".format(url))
@@ -92,33 +105,46 @@ def download_media(url, filename):
     with open(filename, 'wb') as out_file:
         shutil.copyfileobj(response.raw, out_file)
     del response
+    return True
 
 # gets the media from the site
 # depends on the site
 # may break if the site changes how it works
-def get_media(post, url, saved_files, media_dir):
+def get_media(url, title, saved_files, media_dir):
+    # different urls require us to change either the extension or how we download
+    # we would like to check before downloading a file that it doesnt already exists in our database
+    # a post already exists in our database if the title, author, and subreddit all match
+    # lets assume if we call this function we want to download the file
+    # so that means download as long as its possible
+    # we return if it was downloaded or not only
+
+    downloaded = False
     
+    filename = get_valid_filename(title)
+    ext = ''
     # use a function someone made to get the media from redgifs
     if "redgifs" in url:
-        post.set_filename(media_dir, get_valid_filename(post.title), ".mp4")
+        ext = 'mp4'
+
+        full_filename = f'{media_dir}/{filename}.{ext}'
         
-        if not post.get_short_filename() in saved_files:
-            download_redgif_content(url, post.get_filename())
+        downloaded = download_redgif_content(url, full_filename)
     
     # simply download the picture,  this link is to a .jpg
     elif "i.redd.it" in url or ("imgur.com" in url and not "imgur.com/a/" in url) or "cdni.pornpics.com" in url:
         if ".gifv" in url:
+            ext = 'mp4'
             url = url[0:-4]+"mp4"
-            post.set_filename(media_dir, get_valid_filename(post.title), ".mp4")
         elif ".gif" in url:
-            post.set_filename(media_dir, get_valid_filename(post.title), ".gif")
+            ext = 'gif'
         elif ".jpg" in url:
-            post.set_filename(media_dir, get_valid_filename(post.title), ".jpg")
+            ext = 'jpg'
         elif ".jpeg" in url:
-            post.set_filename(media_dir, get_valid_filename(post.title), ".jpeg")
+            ext = 'jpeg'
         
-        if not post.get_short_filename() in saved_files:
-            download_media(url, post.get_filename())
+        full_filename = f'{media_dir}/{filename}.{ext}'
+        downloaded = download_media(url, full_filename)
+        
 
 
     # for now ignore galleries
@@ -126,30 +152,23 @@ def get_media(post, url, saved_files, media_dir):
         # can use gallery_get to get the pictures
         # but since there is multiple pictures we need to make multiple posts then,
         # same title but with a number to indicate which image of the post we have
-        post = None
         print("Is gallery")
         
 
     # can change the extension of .gifv to .mp4 and they work????
     elif ".gifv" in url:
+        ext = 'mp4'
         url = url[0:-4]+"mp4"
-        post.set_filename(media_dir, get_valid_filename(post.title), ".mp4")
         
-        if not post.get_short_filename() in saved_files:
-            download_media(url, post.get_filename())
+        full_filename = f'{media_dir}/{filename}.{ext}'
+        download_media(url, full_filename)
 
 
-    if post == None:
+    if not downloaded:
         print("Could not find a way to download {}".format(url))
 
-    if post != None and not os.path.isfile(post.get_filename()):
-        print("Media for post {} doesnt exist now".format(url))
-        post = None
 
-    # need to make it so we check by post title and time posted to compare if exists
-    # so multiple posts with same name can be saved
-
-    return post
+    return downloaded, filename, ext
 
 # START PROGRAM
 def main():
@@ -192,40 +211,31 @@ def main():
 
 
     # check if any posts dont have a saved file should also check for postless media
-    idx = 0
-    while idx < len(old_posts):
-        post = old_posts[idx]
-        if not post.get_short_filename() in saved_files:
-            old_posts.pop(idx)
-            idx -= 1
-        idx += 1
+    # idx = 0
+    # while idx < len(old_posts):
+    #     post = old_posts[idx]
+    #     if not post.get_short_filename() in saved_files:
+    #         old_posts.pop(idx)
+    #         idx -= 1
+    #     idx += 1
 
     # get saved posts (and upvoted?) ones for the database
-    scraped_posts = scrape_posts(reddit, saved_files, scrape_amount, media_dir)
+    num_new_posts = scrape_posts(reddit, saved_files, scrape_amount, media_dir)
     
 
     # get all of the titles of the posts from the old saved posts
-    titles = []
-    for p in old_posts:
-        titles.append(p.get_filename())
+    # titles = []
+    # for p in old_posts:
+    #     titles.append(p.get_filename())
 
     # the new posts are those that do not have a matching title with the already saved posts
-    new_posts = [p for p in scraped_posts if not p.get_filename() in titles]
-
-
-    idx = len(old_posts) + 1
-    for p in reversed(new_posts):
-        p.set_idx(idx)
-        idx += 1
-
-    # merge the old and new posts together
-    all_posts = list(set(old_posts).union(set(new_posts)))
+    # new_posts = [p for p in scraped_posts if not p.get_filename() in titles]
 
 
 
 
-    print("Post info: old: {} | new: {} | total: {} | scraped: {}".format(len(old_posts), len(new_posts), len(all_posts), len(scraped_posts)))
+    print("Post info: old: {} | new: {} | total: {} | scraped: {}".format(1, 1, 1, num_new_posts))
 
 
     # save the posts
-    pickler.save(all_posts, posts_data_file)
+    # pickler.save(all_posts, posts_data_file)
