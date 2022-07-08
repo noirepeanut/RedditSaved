@@ -18,13 +18,21 @@ from sys import platform as PLATFORM
 import pickler
 import classes
 
-from models import Post, Tag, PostTag
+from database import session
+
+from models import Post, Tag, Group, Collection, CollectionPost, get_all_model_entries
 
 inst = vlc.Instance('--no-xlib')
 inst.log_unset()
 
 # if this filename changes we need to update for each file
 settings_file = 'data/settings.dat'
+
+def format_col(values):
+    s = ''
+    for v in values:
+        s += v + '\n'
+    return s
 
 def clamp(num, min_value, max_value):
     num = max(min(num, max_value), min_value)
@@ -168,8 +176,8 @@ def get_all_new_suggested_tags(tag_pool, shown_tags, post_tags=[], amount=3):
         shown_tags.append(tags[-1])
     return tags
 
-def get_suggested_tag_text():
-    return "z\t\tx\t\tc  \n{}\t\t{}\t\t{}".format(suggest_tags[0], suggest_tags[1], suggest_tags[2])
+def get_suggested_tag_text(tags):
+    return [[t.value for t in tags]]
 
 def get_posts_in_group(group, all_posts):
     posts = []
@@ -187,13 +195,7 @@ def get_posts_in_group(group, all_posts):
     return posts
 
 def get_all_images(all_posts):
-    posts = []
-    for post in all_posts:
-        if post.is_image():
-            posts.append(post)
-    if len(posts) == 0:
-        posts = all_posts
-    return posts
+    return session.query(Post).filter_by(ext='jpg').all()
 
 def get_all_gifs(all_posts):
     posts = []
@@ -214,6 +216,7 @@ def get_all_videos(all_posts):
     return posts
 
 def get_posts_not_viewed(all_posts):
+    session.commit()
     posts = []
     for post in all_posts:
         if post.views == 0:
@@ -335,6 +338,9 @@ def main():
     controls = pickler.load(controls_file)
 
 
+    tags = get_all_model_entries(Tag)
+    groups = get_all_model_entries(Group)
+    data = get_all_model_entries(Post)
 
 
 
@@ -474,7 +480,7 @@ def main():
 
 
     # these are static for all posts and all layouts
-    tag_suggest_elem = sg.Table([suggest_tags], headings=['z', 'x', 'c'], key='_TAG_SUGGEST_', justification='center', max_col_width=30, def_col_width=20,
+    tag_suggest_elem = sg.Table(get_suggested_tag_text(suggest_tags), headings=['z', 'x', 'c'], key='_TAG_SUGGEST_', justification='center', max_col_width=30, def_col_width=20,
                                 auto_size_columns=False, font='20', 
                                 hide_vertical_scroll=True, select_mode=sg.TABLE_SELECT_MODE_NONE, row_height=2)
 
@@ -482,8 +488,8 @@ def main():
     # media_elem = sg.Image(data=media_data, size=(500,300), key="_MEDIA_")
 
     # add these to the media frame?
-    post_tags_header_elem = sg.Text("Tags: {} / {}".format(len(p.tags), len(tags)), key='_TAG_HEADER_', justification='center', expand_x=False)
-    post_tags_elem = sg.Text(p.get_tags(format='col'), font='18', key='_POST_TAGS_', justification='left')
+    post_tags_header_elem = sg.Text("Tags: {} / {}".format(p.tags.count(), len(tags)), key='_TAG_HEADER_', justification='center', expand_x=False)
+    post_tags_elem = sg.Text(format_col(p.tags), font='18', key='_POST_TAGS_', justification='left')
 
 
     controls_display_elem = sg.Text("{}".format(get_controls_label_text(controls)), key='_CONTROLS_DISPLAY_', justification='left', expand_x=True)
@@ -915,41 +921,41 @@ def main():
             shown_tags.append(suggest_tags[1])
             shown_tags.append(suggest_tags[2])
             suggest_tags = get_all_new_suggested_tags(tags, shown_tags, p.tags)
-            window['_TAG_SUGGEST_'].update([suggest_tags])
+            window['_TAG_SUGGEST_'].update(get_suggested_tag_text(suggest_tags))
             slideshow_time -= 2
 
         # add the tag to the post
         elif event in controls['add_suggested_tag_0']:
             suggest_tags[0] = add_suggest_tag(p, suggest_tags[0], tags, shown_tags)
             window['_TAG_SUGGEST_'].update([suggest_tags])
-            window['_TAG_HEADER_'].update("Tags: {} / {}".format(len(p.tags), len(tags)))
-            window['_POST_TAGS_'].update(p.get_tags(format='col'))
-            window['_TAG_SUGGEST_'].update([suggest_tags])
+            window['_TAG_HEADER_'].update("Tags: {} / {}".format(p.tags.count(), len(tags)))
+            window['_POST_TAGS_'].update(p.tags)
+            window['_TAG_SUGGEST_'].update(get_suggested_tag_text(suggest_tags))
             slideshow_time -= 2
 
         # add the tag to the post
         elif event in controls['add_suggested_tag_1']:
             suggest_tags[1] = add_suggest_tag(p, suggest_tags[1], tags, shown_tags)
             window['_TAG_SUGGEST_'].update([suggest_tags])
-            window['_TAG_HEADER_'].update("Tags: {} / {}".format(len(p.tags), len(tags)))
-            window['_POST_TAGS_'].update(p.get_tags(format='col'))
-            window['_TAG_SUGGEST_'].update([suggest_tags])
+            window['_TAG_HEADER_'].update("Tags: {} / {}".format(p.tags.count(), len(tags)))
+            window['_POST_TAGS_'].update(p.tags)
+            window['_TAG_SUGGEST_'].update(get_suggested_tag_text(suggest_tags))
             slideshow_time -= 2
 
         # add the tag to the post
         elif event in controls['add_suggested_tag_2']:
             suggest_tags[2] = add_suggest_tag(p, suggest_tags[2], tags, shown_tags)
             window['_TAG_SUGGEST_'].update([suggest_tags])
-            window['_TAG_HEADER_'].update("Tags: {} / {}".format(len(p.tags), len(tags)))
-            window['_POST_TAGS_'].update(p.get_tags(format='col'))
-            window['_TAG_SUGGEST_'].update([suggest_tags])
+            window['_TAG_HEADER_'].update("Tags: {} / {}".format(p.tags.count(), len(tags)))
+            window['_POST_TAGS_'].update(p.tags)
+            window['_TAG_SUGGEST_'].update(get_suggested_tag_text(suggest_tags))
             slideshow_time -= 2
 
         # removes the most recently added tag
         elif event in controls['remove_tag']:
-            if len(p.tags) > 0:
+            if p.tags.count() > 0:
                 p.remove_tag(p.tags[-1])
-                window['_POST_TAGS_'].update(p.get_tags(format='col'))
+                window['_POST_TAGS_'].update(p.tags)
 
 
         # elif event in controls['ignore_post']:
@@ -992,6 +998,7 @@ def main():
             media_data = p.get_media()
 
             p.viewed()
+            session.commit()
             # print(p.get_idx())
 
             # p.add_time_viewed(time)
@@ -1009,9 +1016,9 @@ def main():
             
             window[frame_selector.get_key('TITLE')].update(get_top_text_string(p, post_idx, len(display_posts)))
             window[frame_selector.get_key('SET_INFO')].update("{} / {} posts in current set: {}".format(post_idx+1, len(display_posts), get_set_name(cur_set_view, set_views, g, t, temp_set_idx)))
-            window['_TAG_HEADER_'].update("Tags: {} / {}".format(len(p.tags), len(tags)))
-            window['_POST_TAGS_'].update(p.get_tags(format='col'))
-            window['_TAG_SUGGEST_'].update([suggest_tags])
+            window['_TAG_HEADER_'].update("Tags: {} / {}".format(p.tags.count(), len(tags)))
+            window['_POST_TAGS_'].update(p.tags)
+            window['_TAG_SUGGEST_'].update(get_suggested_tag_text(suggest_tags))
 
 
             # check if looped and if so do stuff
@@ -1083,13 +1090,14 @@ def main():
 
     # unload all of the image data from the post so the file isnt so large
     for post in data:
-        if post.loaded:
-            post.unload_image()
+        pass
+        # if post.loaded:
+        #     post.unload_image()
 
     # not working as attribute wasnt set for my file
     p.exited_post()
 
-    pickler.save(data, posts_data_file)
+    # pickler.save(data, posts_data_file)
 
     if settings['save_tempsets']:
         for temp_set in temp_sets:
