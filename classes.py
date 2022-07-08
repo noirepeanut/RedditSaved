@@ -181,7 +181,6 @@ class Post:
             # self.cur_img.seek(self.frame_idx)
             # self.cur_img.show()
         else:
-            self.get_next_frame()
             self.cur_img.seek(self.frame_idx)
             # print(self.cur_img.tell())
             # print(self.cur_img.tell())

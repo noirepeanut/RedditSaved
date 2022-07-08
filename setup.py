@@ -59,6 +59,9 @@ def main():
         'view_not_tagged' : ['/'],
         'toggle_groups'   : [','],
 
+        'view_subreddit'  : ['\''],
+        'view_by_author'  : [';'],
+
         'view_newest_posts' : ['n'],
         'view_oldest_posts' : ['N'],
 
@@ -157,7 +160,7 @@ def main():
         'tempsets_file'              : "data/tempsets.dat",
         'theme'                      : "Dark",
         'browser_theme'              : "Black",
-        'view_reddit_info'           : False,
+        'view_reddit_info'           : True,
         'use_static_tags'            : False,
         'static_tags'                : ['teen', 'cum', 'slut'],
         'shuffle_on_startup'         : True,

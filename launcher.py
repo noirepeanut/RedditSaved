@@ -48,7 +48,7 @@ def main():
 		# 	launch_program = 'tag_group_editor'
 		# 	break
 		# elif events == '_CHANGE_CONTROLS_':
-		# 	launch_program = 'change_controls'
+		# 	launch_program = 'change_controls'ffnn
 		# 	break
 		# elif events == '_EDIT_SETTINGS_':
 		# 	launch_program = 'edit_settings'
